@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">ThirdDockDemo</string>
+    <string name="str_txt_cancel">取消</string>
+    <string name="str_txt_confirm">确定</string>
+    <string name="str_txt_storage_permission_request_tips">为保证当前功能的正常体验，使用前请允许访问当前设备存储权限</string>
+    <string name="str_txt_storage_permission_forbid_tips">由于您之前禁用了设备存储权限,重新开启需前往设置页面进行修改。</string>
+</resources>
