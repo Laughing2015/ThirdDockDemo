@@ -10,23 +10,11 @@ API信息：
 {
     "FunWay": 0,
     "FunName": "GetThirdPartyBookResource",
-    "Info": "{
-    	"BookID": "534",
-    	"Cooperation": "ZElephant",
-    	"DeviceNo": "aff8bf9551d2d36e",
-    	"SecretKey": "089f79cffa8af74e1966ba2fa34cd370"
-	}"
+    "Info": "{\"BookID\":\"534\",\"Cooperation\":\"ZElephant\",\"DeviceNo\":\"aff8bf9551d2d36e\",\"SecretKey\":\"089f79cffa8af74e1966ba2fa34cd370\"}"
 }
 返回参数示例：
 {
-    "Data":"{
-    			"BookResource": {
-        			"ResourceUrl": "https://bskcdn.kingsun.cn/prod/waterdrop/534_1652814879223.zip",
-        			"Version": "1.0.2",
-        			"CreatedAt": "2022-05-01 00:00:00"
-    			},
-    			"Device": "Pe6049pVeoO2SrOD/pua+hfw6AYkWASZwFkZ6t6wy89v4szsd1h+gbW24Bhg0oyrxuQefTWoT5sYo7cwSO37ew=="
-	}",
+    "Data": "{\"BookResource\":{\"ResourceUrl\":\"https://bskcdn.kingsun.cn/prod/waterdrop/534_1652814879223.zip\",\"Version\":\"1.0.2\",\"CreatedAt\":\"2022-05-01 00:00:00\"},\"Device\":\"Pe6049pVeoO2SrOD/pua+hfw6AYkWASZwFkZ6t6wy89v4szsd1h+gbW24Bhg0oyrxuQefTWoT5sYo7cwSO37ew==\"}",
     "ErrorCode": 0,
     "ErrorMsg": null,
     "RequestID": null,
@@ -37,14 +25,14 @@ API信息：
 
 请求字段说明：
 
-|   字段名    |                      说明                      | 备注                                                         |
-| :---------: | :--------------------------------------------: | :----------------------------------------------------------- |
-|   FunWay    |              接口方式（固定传0）               |                                                              |
-|   FunName   |    接口方法名（GetThirdPartyBookResource）     |                                                              |
-|   BookID    |                 方直科技书本id                 |                                                              |
-| Cooperation |              合作方（ZElephant）               |                                                              |
-|  DeviceNo   |                     设备id                     | android高版本不建议或禁用一般应用获取IMEI等设备信息，<br/>这里定为使用android_Id , 获取android_id不需要授权，<br/>但是会受签名影响发生变化，对接时需进一步沟通 |
-|  SecretKey  | 合作方秘钥（089f79cffa8af74e1966ba2fa34cd370） | 由方直分配                                                   |
+|   字段名    |                        说明                         | 备注                                                         |
+| :---------: | :-------------------------------------------------: | :----------------------------------------------------------- |
+|   FunWay    |                 接口方式（固定传0）                 |                                                              |
+|   FunName   |    接口方法名<br/>（GetThirdPartyBookResource）     |                                                              |
+|   BookID    |                   方直科技书本id                    |                                                              |
+| Cooperation |                 合作方（ZElephant）                 |                                                              |
+|  DeviceNo   |                       设备id                        | android高版本不建议或禁用一般应用获取IMEI等设备信息，<br/>这里暂定为使用android_Id , 获取android_id不需要授权，<br/>但是会受签名影响发生变化，对接时需进一步沟通 |
+|  SecretKey  | 合作方秘钥<br/>（089f79cffa8af74e1966ba2fa34cd370） | 由方直分配                                                   |
 
 返回字段说明：
 
@@ -91,7 +79,7 @@ params参数字段说明：
 | --- | --- | --- |
 |Device|设备鉴权信息|GetThirdPartyBookResource接口返回字段|
 |BookId|书本id|使用方直科技的书本id|
-|ResourcePath|资源包下载到本地完整路径|由于跨应用共享文件目录涉及到文件读写权限获取的问题，<br/>android高版本限制了应用的文件读写范围，执象的设备是自定制系统，<br/>建议下载后将资源包存放至同步学HD app的外部存储的应用专属空间，即<br/>/storage/emulated/0/Android/data/com.elephant.synstudy.custom/files<br/>目录下，这样可以避免存储授权操作，优化体验|
+|ResourcePath|资源包下载到本地完整路径||
 |Version|资源包版本|GetThirdPartyBookResource接口返回字段（用于处理资源版本更新）|
 
 ###### 3.书本学习记录获取
