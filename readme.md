@@ -58,12 +58,12 @@ try {
 
 params参数字段说明：
 
-|    字段名    | <div style="width:100px">说明</div>| 备注                                                         |
-| :----------: | :----------------------: | :----------------------------------------------------------- |
-|    Device    |          设备id          | android高版本不建议或禁用一般应用获取IMEI等设备信息，这里定为使用android_Id , 获取android_id不需要授权，但是会受签名影响发生变化，对接时需进一步沟通 |
-|    BookId    |          书本id          | 使用方直科技的书本id                                         |
-| ResourcePath | 资源包下载到本地完整路径 | 跨应用共享文件目录涉及到文件读写权限获取的问题，android高版本限制了应用的文件读写范围，执象的设备是自定制系统，建议将资源包下载至同步学HD app的外部存储的应用专属空间，即/storage/emulated/0/Android/data/com.elephant.synstudy.custom/files目录下，这样可以避免存储授权操作，优化体验 |
-|   Version    |        资源包版本        | 用于资源版本更新                                             |
+|字段名|说明|备注|
+| --- | --- | --- |
+|Device|设备id|android高版本不建议或禁用一般应用获取IMEI等设备信息，这里定为使用android_Id , 获取android_id不需要授权，但是会受签名影响发生变化，对接时需进一步沟通|
+|BookId|书本id|使用方直科技的书本id|
+|ResourcePath|资源包下载到本地完整路径|跨应用共享文件目录涉及到文件读写权限获取的问题，android高版本限制了应用的文件读写范围，执象的设备是自定制系统，建议将资源包下载至同步学HD app的外部存储的应用专属空间，即/storage/emulated/0/Android/data/com.elephant.synstudy.custom/files目录下，这样可以避免存储授权操作，优化体验|
+|Version|资源包版本|用于资源版本更新|
 
 
 
