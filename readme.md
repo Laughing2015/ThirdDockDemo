@@ -25,22 +25,22 @@ API信息：
 
 请求字段说明：
 
-|   字段名    |      说明      | 备注                                                         |
-| :---------: | :------------: | :----------------------------------------------------------- |
-|   FunWay    |    接口方式    | 固定传0                                                      |
-|   FunName   |   接口方法名   |                                                              |
-|   BookID    | 方直科技书本id |                                                              |
-| Cooperation |    合作方名    |                                                              |
-|  DeviceNo   |     设备id     | android高版本不建议或禁用一般应用获取IMEI等设备信息，<br/>这里暂定为使用android_Id , 获取android_id不需要授权，<br/>但是会受签名影响发生变化，对接时需进一步沟通 |
-|  SecretKey  |   合作方秘钥   | 由方直分配                                                   |
+|   字段名    |  类型  |      说明      | 备注                                                         |
+| :---------: | :----: | :------------: | :----------------------------------------------------------- |
+|   FunWay    |  Int   |    接口方式    | 必传（固定传0）                                              |
+|   FunName   | String |   接口方法名   | 必传                                                         |
+|   BookID    |  Int   | 方直科技书本id | 必传                                                         |
+| Cooperation | String |    合作方名    | 必传                                                         |
+|  DeviceNo   | String |     设备id     | 必传（android高版本不建议或禁用一般应用获取IMEI等设备信息，<br/>这里暂定为使用android_Id , 获取android_id不需要授权，<br/>但是会受签名影响发生变化，对接时需进一步沟通） |
+|  SecretKey  | String |   合作方秘钥   | 必传（由方直分配）                                           |
 
 返回字段说明：
 
-|   字段名    |       说明       | 备注                                                         |
-| :---------: | :--------------: | :----------------------------------------------------------- |
-| ResourceUrl | 书本资源下载链接 | 由于跨应用共享文件目录涉及到文件读写权限获取的问题，<br/>android高版本限制了应用的文件读写范围，执象的设备是自定制系统，<br/>建议下载后将资源包存放至同步学HD app的外部存储的应用专属空间，即<br/>/storage/emulated/0/Android/data/com.elephant.synstudy.custom/files<br/>目录下，这样可以避免存储授权操作，优化体验 |
-|   Version   |  书本资源版本号  |                                                              |
-|   Device    |   设备鉴权信息   |                                                              |
+|   字段名    |  类型  |       说明       | 备注                                                         |
+| :---------: | :----: | :--------------: | :----------------------------------------------------------- |
+| ResourceUrl | String | 书本资源下载链接 | 由于跨应用共享文件目录涉及到文件读写权限获取的问题，<br/>android高版本限制了应用的文件读写范围，执象的设备是自定制系统，<br/>建议下载后将资源包存放至同步学HD app的外部存储的应用专属空间，即<br/>/storage/emulated/0/Android/data/com.elephant.synstudy.custom/files<br/>目录下，这样可以避免存储授权操作，优化体验 |
+|   Version   | String |  书本资源版本号  |                                                              |
+|   Device    | String |   设备鉴权信息   |                                                              |
 
 #### 接入说明
 
@@ -75,12 +75,13 @@ try {
 
 params参数字段说明：
 
-|字段名|说明|备注|
-| --- | --- | --- |
-|Device|设备鉴权信息|GetThirdPartyBookResource接口返回字段|
-|BookId|书本id|使用方直科技的书本id|
-|ResourcePath|资源包下载到本地完整路径||
-|Version|资源包版本|GetThirdPartyBookResource接口返回字段（用于处理资源版本更新）|
+|字段名|类型|说明|备注|
+| --- | :-: | --- | --- |
+|Device|String|设备鉴权信息|必传（GetThirdPartyBookResource接口返回字段）|
+|BookId|Int|书本id|必传（使用方直科技的书本id）|
+|CatalogueId|Int|目录id|可选|
+|ResourcePath|String|资源包下载到本地完整路径|必传|
+|Version|String|资源包版本|必传（GetThirdPartyBookResource接口返回字段，用于处理资源版本更新）|
 
 ###### 3.书本学习记录获取
 

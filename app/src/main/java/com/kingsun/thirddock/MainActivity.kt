@@ -215,7 +215,7 @@ class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks, 
         bookResource?.apply {
             val params = JsonObject()
             params.addProperty("Device",Device)
-            params.addProperty("BookId",binding.etBookId.text.toString())
+            params.addProperty("BookId",binding.etBookId.text.toString().toInt())
             savePath?.let {
                 params.addProperty("ResourcePath",it)
             }
