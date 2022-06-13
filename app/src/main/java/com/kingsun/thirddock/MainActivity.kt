@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
+import android.text.TextUtils
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.google.gson.Gson
@@ -47,6 +48,10 @@ class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks, 
 
         mOkHttpHelper = OkHttpHelper.instance
         binding.btnConfirm.setOnClickListener {
+            if(binding.etBookId.text.toString().isNullOrEmpty()){
+                "书本id不能为空".toast(this)
+                return@setOnClickListener
+            }
             checkAndRequestPermission()
         }
         binding.etDeviceId.setText(getDeviceId())

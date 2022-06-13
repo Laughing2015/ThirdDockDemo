@@ -23,6 +23,7 @@
         android:layout_height="wrap_content"
         android:layout_marginLeft="15dp"
         android:text="534"
+        android:inputType="number"
         android:textColor="@color/color_6249EE"
         android:textSize="25sp"
         app:layout_constraintLeft_toRightOf="@+id/tv_book_id"
