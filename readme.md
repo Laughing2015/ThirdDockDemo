@@ -1,6 +1,6 @@
 #### 前置条件
 
-###### 1.调用方直提供的API进行书本资源下载
+##### 1.调用方直提供的API进行书本资源下载
 
 API信息（目前提供的是测试环境，需要定向开放才可访问，调试前需将执象调用方的外网ip提供给方直进行开通）：
 
@@ -44,11 +44,43 @@ API信息（目前提供的是测试环境，需要定向开放才可访问，�
 
 #### 接入说明
 
-###### 1.安装 同步学HD app
+##### 1.安装 同步学HD app
 
 apk包位于Demo工程根目录下
 
-###### 2.使用Scheme协议完成app跳转
+##### 2.文件配置
+
+在 module 下的 build.gradle 内添加如下配置：
+
+
+```
+// 该插件可选，只是为了方便实体类序列化，如果不用，自行实现 parcelable 序列化操作
+apply plugin: 'kotlin-parcelize'
+
+   android {     
+        // 指定 aidl 文件的放置路径
+        sourceSets{
+            main {
+                java.srcDirs = ['src/main/java', 'src/main/aidl']
+            }
+        }
+    }
+```
+
+在 AndroidManifest.xml 中添加如下权限
+
+```
+<!--申请服务权限，才能连接服务-->
+<uses-permission android:name="com.kingsun.custom.permission.ACCESS_APP_SERVICE"/>
+```
+
+##### 3.AIDL 文件处理
+
+把 Demo 中的 aidl 文件夹拷贝到项目中，跟 java 项目平级，AIDL 文件和对应的实体为双方约定的服务接口及数据体。
+
+注：如果服务端 APK 有相关的 AIDL 更新，客户端要同步更新，不要更改 aidl 目录下的任何文件以及包名等，避免服务不一致导致异常。
+
+##### 4.使用Scheme协议完成app跳转
 
 代码示例（详见Demo）：
 
@@ -83,22 +115,17 @@ params参数字段说明：
 |ResourcePath|String|资源包下载到本地完整路径|必传|
 |Version|String|资源包版本|必传（GetThirdPartyBookResource接口返回字段，用于处理资源版本更新）|
 
-###### 3.书本学习记录获取
+##### 5.连接远程服务
 
-退出电子书页面会保留以下信息至ResourcePath的父级路径下/study_record/bookid.json中，自行读取文件内容获取
+1.  一定要先通过 bindService 绑定服务。
 
-完整路径示例：/storage/emulated/0/Android/data/com.elephant.synstudy.custom/files/study_record/534.json
+2.  再注册监听事件。
 
-内容示例：
+3.  再主动调用各种接口功能，回调的接口功能在监听事件中进行回调。
 
-```
-{
-    "bookId": 534,//方直书本id
-    "catalogueId":55763,//方直目录id
-    "pageNum": 1 //书页页码号
-}
-```
+4.  解绑服务。
 
+注意：一定要在书本完全打开后，再绑定服务，避免远程服务还没开启导致绑定失败。具体代码操作演示请参考 MainActivity 类。
 
 
 注：Demo工程内包含完整的调用API下载资源、scheme协议跳转流程，运行Demo可看具体效果
