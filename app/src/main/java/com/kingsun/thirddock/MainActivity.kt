@@ -4,17 +4,23 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Environment
+import android.os.*
 import android.provider.Settings
-import android.text.TextUtils
+import android.util.Log
 import android.view.View
+import android.widget.Button
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.gson.Gson
 import com.google.gson.JsonObject
+import com.kingsun.custom.BookUseInfo
+import com.kingsun.custom.IAppManager
+import com.kingsun.custom.IOnAppListener
 import com.kingsun.thirddock.Permissions.RC_MANAGE_APP_ALL_FILES_ACCESS_PERM
 import com.kingsun.thirddock.databinding.ActivityMainBinding
 import com.kingsun.thirddock.net.Const.API_GET_THIRD_PARTY_BOOK_RESOURCE
@@ -26,6 +32,8 @@ import com.kingsun.thirddock.net.RequestCallBack
 import com.kingsun.thirddock.net.ResponseData
 import com.kingsun.thirddock.net.ThirdPartyBookResource
 import com.kingsun.thirddock.util.*
+import com.lzf.easyfloat.EasyFloat
+import com.lzf.easyfloat.enums.ShowPattern
 import okhttp3.Request
 import okhttp3.Response
 import pub.devrel.easypermissions.AfterPermissionGranted
@@ -34,12 +42,14 @@ import pub.devrel.easypermissions.EasyPermissions
 import pub.devrel.easypermissions.PermissionRequest
 import java.io.File
 import java.io.IOException
+import java.lang.ref.WeakReference
 import java.net.URLEncoder
 
 
-class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks, EasyPermissions.RationaleCallbacks{
-    lateinit var binding:ActivityMainBinding
-    private lateinit var mOkHttpHelper : OkHttpHelper
+class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
+    EasyPermissions.RationaleCallbacks {
+    lateinit var binding: ActivityMainBinding
+    private lateinit var mOkHttpHelper: OkHttpHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,21 +58,156 @@ class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks, 
 
         mOkHttpHelper = OkHttpHelper.instance
         binding.btnConfirm.setOnClickListener {
-            if(binding.etBookId.text.toString().isNullOrEmpty()){
+            if (binding.etBookId.text.toString().isNullOrEmpty()) {
                 "书本id不能为空".toast(this)
                 return@setOnClickListener
             }
             checkAndRequestPermission()
         }
         binding.etDeviceId.setText(getDeviceId())
+
+        EasyFloat.with(this).setLayout(R.layout.aidl_layout).setShowPattern(ShowPattern.ALL_TIME)
+            .show()
+        binding.root.post {
+            handleFloatLayout()
+        }
     }
+
+    /**
+     * @Author： fanda
+     * @des：处理悬浮窗口事件，用于 AIDL 服务交互
+     */
+    private fun handleFloatLayout() {
+        EasyFloat.getFloatView()?.apply {
+            findViewById<Button>(R.id.btn_bind_service).setOnClickListener {
+                // 一定要先绑定服务
+                bindRemoteService()
+            }
+            findViewById<Button>(R.id.btn_add_listener).setOnClickListener {
+                // 添加监听事件
+                withRemoteErrorHandling { mAppManager.registerOnAppListener(mOnAppListener) }
+            }
+            findViewById<Button>(R.id.btn_exit_app).setOnClickListener {
+                // 关闭应用
+                withRemoteErrorHandling {
+                    mAppManager.exitApp()
+                    // 解绑服务
+                    if (isServiceConnected) unbindService(mServiceConnection)
+                    isServiceConnected = false
+                }
+            }
+        }
+    }
+
+    // start -------------- 远程服务相关处理 -------------- //
+
+    companion object {
+        const val TAG = "MainActivity"
+        const val PACKAGE_NAME = "com.elephant.synstudy.custom"
+        const val REMOTE_SERVICE_ACTION = "com.kingsun.synstudy.custom.service.action"
+        const val WHAT_BOOK_USE_INFO = 1
+    }
+
+    private var isServiceConnected = false
+    private lateinit var mAppManager: IAppManager
+    private val mMyHandler = MyHandler(this)
+
+    private fun bindRemoteService() {
+        val intent = Intent(REMOTE_SERVICE_ACTION).apply { `package` = PACKAGE_NAME }
+        bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE)
+    }
+
+    private val mServiceConnection = object : ServiceConnection {
+
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            Log.d(TAG, "服务已连接：onServiceConnected")
+            isServiceConnected = true
+            mAppManager = IAppManager.Stub.asInterface(service)
+            try {
+                service?.linkToDeath(mDeathRecipient, 0)
+            } catch (e: RemoteException) {
+                e.printStackTrace()
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            Log.d(TAG, "服务异常中断：onServiceDisconnected")
+            isServiceConnected = false
+            // 重新绑定服务
+            bindRemoteService()
+        }
+
+    }
+
+    /**
+     * @Author： fanda
+     * @des： Binder 死亡代理
+     */
+    private val mDeathRecipient = IBinder.DeathRecipient {
+        //该方法在client 端线程池中运行，远程服务进程异常，重新连接服务
+        bindRemoteService()
+    }
+
+    /**
+     * @Author： fanda
+     * @des： 在服务连接成功时 调用远程服务方法，并捕获异常
+     */
+    private fun withRemoteErrorHandling(handler: () -> Unit) {
+        if (isServiceConnected) {
+            try {
+                handler()
+            } catch (e: RemoteException) {
+                e.printStackTrace()
+            }
+        } else {
+            "服务中断".toast(this)
+        }
+    }
+
+    private val mOnAppListener = object : IOnAppListener.Stub() {
+        override fun onBookUseInfoCallback(bookUseInfo: BookUseInfo) {
+            // 该回调在客户端 Binder 线程池执行，需切换主线程进行操作
+            mMyHandler.sendMessage(Message.obtain().apply {
+                obj = bookUseInfo
+                what = WHAT_BOOK_USE_INFO
+            })
+        }
+    }
+
+    // 静态自定义 Handler 类
+    private class MyHandler(activity: MainActivity?) : Handler() {
+        private val mReference: WeakReference<MainActivity>
+        override fun handleMessage(msg: Message) {
+            // 更新UI等操作
+            if (mReference.get() != null) {
+                when (msg.what) {
+                    WHAT_BOOK_USE_INFO -> {
+                        Log.d(TAG, "获取书本使用信息: ${msg.obj as BookUseInfo}")
+                    }
+                }
+            }
+        }
+
+        init {
+            mReference = WeakReference(activity)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // 解绑服务
+        if (isServiceConnected) unbindService(mServiceConnection)
+        mMyHandler.removeCallbacksAndMessages(null)
+    }
+
+    // end -------------- 远程服务相关处理 -------------- //
 
     /**
      *@Desc 存储权限检查
      *@Author xiaolong.li
      *@Time 2022/6/9 14:11
      */
-    private fun checkAndRequestPermission(){
+    private fun checkAndRequestPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // 先判断有没有权限
             if (Environment.isExternalStorageManager()) {
@@ -72,32 +217,58 @@ class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks, 
                 intent.setData(Uri.parse("package:$packageName"))
                 startActivityForResult(intent, RC_MANAGE_APP_ALL_FILES_ACCESS_PERM)
             }
-        }else{
-            if(EasyPermissions.hasPermissions(this,  Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)){
+        } else {
+            if (EasyPermissions.hasPermissions(
+                    this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                )
+            ) {
                 //已有权限
                 doAfterGranted()
-            }else{
+            } else {
                 //没有权限
-                if(!EasyPermissions.somePermissionDenied(this, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)){
+                if (!EasyPermissions.somePermissionDenied(
+                        this,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    )
+                ) {
                     //弹出权限意图弹窗
                     val permissionRequest: PermissionRequest =
-                        PermissionRequest.Builder(this, Permissions.RC_STORAGE_PERM, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
+                        PermissionRequest.Builder(
+                            this,
+                            Permissions.RC_STORAGE_PERM,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                            Manifest.permission.READ_EXTERNAL_STORAGE
+                        )
                             .setNegativeButtonText(
                                 resources.getString(R.string.str_txt_cancel)
                             )
                             .setPositiveButtonText(
                                 resources.getString(R.string.str_txt_confirm)
                             )
-                            .setRationale(resources
-                                .getString(R.string.str_txt_storage_permission_request_tips))
+                            .setRationale(
+                                resources
+                                    .getString(R.string.str_txt_storage_permission_request_tips)
+                            )
                             .build()
-                    showPurposeTipsBeforeRequest(this,resources
-                        .getString(R.string.str_txt_storage_permission_request_tips),permissionRequest)
-                }else{
+                    showPurposeTipsBeforeRequest(
+                        this,
+                        resources
+                            .getString(R.string.str_txt_storage_permission_request_tips),
+                        permissionRequest
+                    )
+                } else {
                     //请求权限
-                    EasyPermissions.requestPermissions(this, resources
-                        .getString(R.string.str_txt_storage_permission_request_tips),
-                        Permissions.RC_STORAGE_PERM, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)
+                    EasyPermissions.requestPermissions(
+                        this,
+                        resources
+                            .getString(R.string.str_txt_storage_permission_request_tips),
+                        Permissions.RC_STORAGE_PERM,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    )
                 }
             }
         }
@@ -109,7 +280,7 @@ class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks, 
      *@Time 2022/6/9 14:12
      */
     @AfterPermissionGranted(Permissions.RC_STORAGE_PERM)
-    private fun doAfterGranted(){
+    private fun doAfterGranted() {
         requestBookInfo()
     }
 
@@ -118,48 +289,53 @@ class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks, 
      *@Author xiaolong.li
      *@Time 2022/6/9 14:12
      */
-    private fun requestBookInfo(){
+    private fun requestBookInfo() {
         val info = JsonObject()
         val requestData = JsonObject()
-        requestData.addProperty("FunWay",0) //0（固定）
-        requestData.addProperty("FunName",API_GET_THIRD_PARTY_BOOK_RESOURCE) //接口方法名
-        info.addProperty("BookID",binding.etBookId.text.toString()) //方直书本id
-        info.addProperty("Cooperation",COOPERATION) //合作方（固定）
-        info.addProperty("DeviceNo",getDeviceId())  //设备信息（传Androidid）
-        info.addProperty("SecretKey",SECRET_KEY)   //合作方秘钥（由方直科技分配）
-        requestData.addProperty("Info",info.toString())
+        requestData.addProperty("FunWay", 0) //0（固定）
+        requestData.addProperty("FunName", API_GET_THIRD_PARTY_BOOK_RESOURCE) //接口方法名
+        info.addProperty("BookID", binding.etBookId.text.toString()) //方直书本id
+        info.addProperty("Cooperation", COOPERATION) //合作方（固定）
+        info.addProperty("DeviceNo", getDeviceId())  //设备信息（传Androidid）
+        info.addProperty("SecretKey", SECRET_KEY)   //合作方秘钥（由方直科技分配）
+        requestData.addProperty("Info", info.toString())
         mOkHttpHelper.post(
             API_URL,
             requestData.toString(),
             object : RequestCallBack<ResponseData?>(this@MainActivity) {
-                override fun onFailure(request: Request?, msg:String?, e: IOException?) {
+                override fun onFailure(request: Request?, msg: String?, e: IOException?) {
                     msg?.toast(this@MainActivity)
                 }
 
                 override fun onSuccess(response: Response?, result: Any) {
                     (result as ResponseData).apply {
-                        if(result.Success){
-                            var bookResource:ThirdPartyBookResource?=null
-                            try{
+                        if (result.Success) {
+                            var bookResource: ThirdPartyBookResource? = null
+                            try {
                                 bookResource = Gson().fromJson(
                                     result.Data,
                                     ThirdPartyBookResource::class.java
                                 )
-                            }catch (e:Exception){
+                            } catch (e: Exception) {
                                 e.printStackTrace()
                             }
-                            if(bookResource==null){
+                            if (bookResource == null) {
                                 "书本数据异常".toast(this@MainActivity)
-                            }else{
+                            } else {
                                 downloadBook(bookResource)
                             }
-                        }else{
+                        } else {
                             result.ErrorMsg?.toast(this@MainActivity)
                         }
                     }
                 }
 
-                override fun onError(response: Response?, code: Int, msg:String?, e: java.lang.Exception?) {
+                override fun onError(
+                    response: Response?,
+                    code: Int,
+                    msg: String?,
+                    e: java.lang.Exception?
+                ) {
                     msg?.toast(this@MainActivity)
                 }
             })
@@ -170,15 +346,15 @@ class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks, 
      *@Author xiaolong.li
      *@Time 2022/6/9 14:14
      */
-    private fun downloadBook(bookResource:ThirdPartyBookResource?){
+    private fun downloadBook(bookResource: ThirdPartyBookResource?) {
         bookResource?.BookResource?.ResourceUrl?.let {
             val desPath =
                 SDCardUtils.getSDCardRootPath() + "TbxTest" + File.separator + binding.etBookId.text.toString() + ".zip"
             val desFile = File(desPath)
-            if(desFile.exists()){
-                openTbxHD(bookResource,desPath)
+            if (desFile.exists()) {
+                openTbxHD(bookResource, desPath)
                 return
-            }else{
+            } else {
                 File(desFile.parent).mkdirs()
             }
             SingleDownloadHelper.startSingleTask(it,
@@ -191,7 +367,7 @@ class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks, 
                     }
 
                     override fun onDownLoadComplete(savePath: String) {
-                        openTbxHD(bookResource,savePath)
+                        openTbxHD(bookResource, savePath)
                         binding.tvLoadTips.visibility = View.GONE
                         binding.pbProgress.visibility = View.GONE
                     }
@@ -203,7 +379,8 @@ class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks, 
                     }
 
                     override fun onDownLoading(offset: Long, total: Long, speed: String) {
-                        binding.pbProgress.progress = (offset.toFloat()/total.toFloat()*100f).toInt()
+                        binding.pbProgress.progress =
+                            (offset.toFloat() / total.toFloat() * 100f).toInt()
                     }
 
                 }
@@ -216,16 +393,16 @@ class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks, 
      *@Author xiaolong.li
      *@Time 2022/6/9 14:15
      */
-    private fun openTbxHD(bookResource:ThirdPartyBookResource?,savePath: String?){
+    private fun openTbxHD(bookResource: ThirdPartyBookResource?, savePath: String?) {
         bookResource?.apply {
             val params = JsonObject()
-            params.addProperty("Device",Device)
-            params.addProperty("BookId",binding.etBookId.text.toString().toInt())
+            params.addProperty("Device", Device)
+            params.addProperty("BookId", binding.etBookId.text.toString().toInt())
             savePath?.let {
-                params.addProperty("ResourcePath",it)
+                params.addProperty("ResourcePath", it)
             }
             BookResource?.Version?.let {
-                params.addProperty("Version",it)
+                params.addProperty("Version", it)
             }
             deepLinkApk(params)
         }
@@ -237,10 +414,15 @@ class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks, 
      *@Time 2022/6/9 14:15
      */
     @SuppressLint("QueryPermissionsNeeded")
-    private fun deepLinkApk(params:JsonObject?) {
+    private fun deepLinkApk(params: JsonObject?) {
         params?.apply {
             val intent = Intent()
-            intent.data = Uri.parse("kingsun://com.elephant.synstudy?"+ URLEncoder.encode(this.toString(),"UTF-8"))
+            intent.data = Uri.parse(
+                "kingsun://com.elephant.synstudy?" + URLEncoder.encode(
+                    this.toString(),
+                    "UTF-8"
+                )
+            )
             intent.action = "android.intent.action.VIEW"
             intent.addCategory("android.intent.category.DEFAULT")
             intent.addCategory("android.intent.category.BROWSABLE")
@@ -248,7 +430,7 @@ class MainActivity : AppCompatActivity() , EasyPermissions.PermissionCallbacks, 
 
             try {
                 startActivity(intent)
-            }catch (e:Exception){
+            } catch (e: Exception) {
                 e.printStackTrace()
                 e.message?.toast(this@MainActivity)
             }
