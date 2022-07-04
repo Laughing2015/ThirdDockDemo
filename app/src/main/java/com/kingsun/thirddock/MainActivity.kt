@@ -44,12 +44,15 @@ import java.io.File
 import java.io.IOException
 import java.lang.ref.WeakReference
 import java.net.URLEncoder
+import java.util.*
 
 
 class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
     EasyPermissions.RationaleCallbacks {
     lateinit var binding: ActivityMainBinding
     private lateinit var mOkHttpHelper: OkHttpHelper
+    var timer:Timer?=null
+    var timerTask:TimerTask?=null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,14 +82,6 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
      */
     private fun handleFloatLayout() {
         EasyFloat.getFloatView()?.apply {
-            findViewById<Button>(R.id.btn_bind_service).setOnClickListener {
-                // 一定要先绑定服务
-                bindRemoteService()
-            }
-            findViewById<Button>(R.id.btn_add_listener).setOnClickListener {
-                // 添加监听事件
-                withRemoteErrorHandling { mAppManager.registerOnAppListener(mOnAppListener) }
-            }
             findViewById<Button>(R.id.btn_exit_app).setOnClickListener {
                 // 关闭应用
                 withRemoteErrorHandling {
@@ -123,6 +118,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
             Log.d(TAG, "服务已连接：onServiceConnected")
             isServiceConnected = true
             mAppManager = IAppManager.Stub.asInterface(service)
+            withRemoteErrorHandling { mAppManager.registerOnAppListener(mOnAppListener) }
             try {
                 service?.linkToDeath(mDeathRecipient, 0)
             } catch (e: RemoteException) {
@@ -133,6 +129,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
         override fun onServiceDisconnected(name: ComponentName?) {
             Log.d(TAG, "服务异常中断：onServiceDisconnected")
             isServiceConnected = false
+            withRemoteErrorHandling { mAppManager.unRegisterOnAppListener(mOnAppListener) }
             // 重新绑定服务
             bindRemoteService()
         }
@@ -195,6 +192,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
 
     override fun onDestroy() {
         super.onDestroy()
+        cancelTimer()
         // 解绑服务
         if (isServiceConnected) unbindService(mServiceConnection)
         mMyHandler.removeCallbacksAndMessages(null)
@@ -430,11 +428,28 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
 
             try {
                 startActivity(intent)
+                cancelTimer()
+                timer = Timer()
+                timerTask = object : TimerTask(){
+                    override fun run() {
+                        if(!isServiceConnected){
+                            bindRemoteService()
+                        }else{
+                            cancelTimer()
+                        }
+                    }
+                }
+                timer?.schedule(timerTask,1000,1000)
             } catch (e: Exception) {
                 e.printStackTrace()
                 e.message?.toast(this@MainActivity)
             }
         }
+    }
+
+    fun cancelTimer(){
+        timerTask?.cancel()
+        timer?.cancel()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
