@@ -7,10 +7,31 @@
     <Button
         android:id="@+id/btn_exit_app"
         app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toLeftOf="@id/btn_visible_settings"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintHorizontal_chainStyle="packed"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="下课"/>
 
+    <Button
+        android:id="@+id/btn_visible_settings"
+        app:layout_constraintLeft_toRightOf="@id/btn_exit_app"
+        app:layout_constraintRight_toLeftOf="@id/btn_visible_evaluation"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginLeft="20dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="显示隐藏设置按钮"/>
+
+    <Button
+        android:id="@+id/btn_visible_evaluation"
+        app:layout_constraintLeft_toRightOf="@id/btn_visible_settings"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginLeft="20dp"
+        app:layout_constraintRight_toRightOf="parent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="显示隐藏评测按钮"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

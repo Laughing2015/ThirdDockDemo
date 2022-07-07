@@ -12,9 +12,9 @@ import android.net.Uri
 import android.os.*
 import android.provider.Settings
 import android.util.Log
+import android.view.Gravity
 import android.view.View
 import android.widget.Button
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -51,8 +51,10 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
     EasyPermissions.RationaleCallbacks {
     lateinit var binding: ActivityMainBinding
     private lateinit var mOkHttpHelper: OkHttpHelper
-    var timer:Timer?=null
-    var timerTask:TimerTask?=null
+    var timer: Timer? = null
+    var timerTask: TimerTask? = null
+    private var visibleSettingsButton = false
+    private var visibleEvaluationButton = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,11 +71,10 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
         }
         binding.etDeviceId.setText(getDeviceId())
 
-        EasyFloat.with(this).setLayout(R.layout.aidl_layout).setShowPattern(ShowPattern.ALL_TIME)
+        EasyFloat.with(this).setLayout(R.layout.aidl_layout).setGravity(Gravity.CENTER_HORIZONTAL)
+            .setShowPattern(ShowPattern.ALL_TIME)
             .show()
-        binding.root.post {
-            handleFloatLayout()
-        }
+        mMyHandler.sendMessage(Message.obtain().apply { what = FLOAT_LAYOUT })
     }
 
     /**
@@ -84,11 +85,23 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
         EasyFloat.getFloatView()?.apply {
             findViewById<Button>(R.id.btn_exit_app).setOnClickListener {
                 // 关闭应用
-                withRemoteErrorHandling {
+                withRemoteErrorHandling("exitApp") {
                     mAppManager.exitApp()
-                    // 解绑服务
-                    if (isServiceConnected) unbindService(mServiceConnection)
-                    isServiceConnected = false
+                    unBindRemoteService()
+                }
+            }
+            findViewById<Button>(R.id.btn_visible_settings).setOnClickListener {
+                // 显示隐藏设置按钮
+                withRemoteErrorHandling("toggleSettingsButton") {
+                    mAppManager.toggleSettingsButton(visibleSettingsButton)
+                    visibleSettingsButton = !visibleSettingsButton
+                }
+            }
+            findViewById<Button>(R.id.btn_visible_evaluation).setOnClickListener {
+                // 显示隐藏评测按钮
+                withRemoteErrorHandling("toggleEvaluationButton") {
+                    mAppManager.toggleEvaluationButton(visibleEvaluationButton)
+                    visibleEvaluationButton = !visibleEvaluationButton
                 }
             }
         }
@@ -100,10 +113,14 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
         const val TAG = "MainActivity"
         const val PACKAGE_NAME = "com.elephant.synstudy.custom"
         const val REMOTE_SERVICE_ACTION = "com.kingsun.synstudy.custom.service.action"
-        const val WHAT_BOOK_USE_INFO = 1
+        const val UNBIND_SERVICE = 2
+        const val FLOAT_LAYOUT = 3
     }
 
     private var isServiceConnected = false
+
+    // 标志着 AIDL 交互可以正常操作（注册事件的交互只需要连接服务成功即可）
+    private var isEnterBookSuccess = false
     private lateinit var mAppManager: IAppManager
     private val mMyHandler = MyHandler(this)
 
@@ -112,14 +129,21 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
         bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE)
     }
 
+    private fun unBindRemoteService() {
+        // 解绑服务
+        if (isServiceConnected) unbindService(mServiceConnection)
+        isServiceConnected = false
+        isEnterBookSuccess = false
+    }
+
     private val mServiceConnection = object : ServiceConnection {
 
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             Log.d(TAG, "服务已连接：onServiceConnected")
             isServiceConnected = true
             mAppManager = IAppManager.Stub.asInterface(service)
-            withRemoteErrorHandling { mAppManager.registerOnAppListener(mOnAppListener) }
             try {
+                mAppManager.registerOnAppListener(mOnAppListener)
                 service?.linkToDeath(mDeathRecipient, 0)
             } catch (e: RemoteException) {
                 e.printStackTrace()
@@ -129,7 +153,10 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
         override fun onServiceDisconnected(name: ComponentName?) {
             Log.d(TAG, "服务异常中断：onServiceDisconnected")
             isServiceConnected = false
-            withRemoteErrorHandling { mAppManager.unRegisterOnAppListener(mOnAppListener) }
+            isEnterBookSuccess = false
+            withRemoteErrorHandling("unRegisterOnAppListener") {
+                mAppManager.unRegisterOnAppListener(mOnAppListener)
+            }
             // 重新绑定服务
             bindRemoteService()
         }
@@ -147,27 +174,52 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
 
     /**
      * @Author： fanda
-     * @des： 在服务连接成功时 调用远程服务方法，并捕获异常
+     * @des： 在服务连接成功并且服务端回调进入课本成功时 调用远程服务方法，并捕获异常
      */
-    private fun withRemoteErrorHandling(handler: () -> Unit) {
-        if (isServiceConnected) {
+    private fun withRemoteErrorHandling(description: String = "", handler: () -> Unit) {
+        if (isServiceConnected && isEnterBookSuccess) {
             try {
                 handler()
             } catch (e: RemoteException) {
                 e.printStackTrace()
             }
         } else {
-            "服务中断".toast(this)
+            "服务没连接...$description".toast(this)
         }
     }
 
     private val mOnAppListener = object : IOnAppListener.Stub() {
-        override fun onBookUseInfoCallback(bookUseInfo: BookUseInfo) {
-            // 该回调在客户端 Binder 线程池执行，需切换主线程进行操作
+
+        override fun onEnterBookCallback(bookUseInfo: BookUseInfo) {
+            isEnterBookSuccess = true
+            Log.d(TAG, "进入课本成功： $bookUseInfo")
+            // 重点注意： 除了监听事件的交互方法，其他方法一定要在 onEnterBookCallback 回调之后再调用，确保服务端完全启动并保证APP数据初始化完成
+            // 设置一些按钮隐藏显示 （忽略APK内部的显示隐藏逻辑，主动调用一下相应交互方法）
+//            mAppManager.toggleSettingsButton(false)
+//            mAppManager.toggleEvaluationButton(false)
+        }
+
+        override fun onExitAppCallback(bookUseInfo: BookUseInfo) {
+            Log.d(TAG, "onExitAppCallback： $bookUseInfo")
+            // APK 内部关闭应用回调，主动解绑服务
             mMyHandler.sendMessage(Message.obtain().apply {
-                obj = bookUseInfo
-                what = WHAT_BOOK_USE_INFO
+                what = UNBIND_SERVICE
             })
+        }
+
+        override fun onBookUseTimeCallback(bookUseInfo: BookUseInfo) {
+            // 关闭应用时回调书本使用时间，单位秒
+            Log.d(TAG, "onBookUseTimeCallback -> $bookUseInfo")
+        }
+
+        override fun onChangeBookPageCallback(bookUseInfo: BookUseInfo) {
+            // 切换书页回调
+            Log.d(TAG, "onChangeBookPageCallback -> $bookUseInfo")
+        }
+
+        override fun onOpenBookResourceCallback(bookUseInfo: BookUseInfo) {
+            // 打开水滴资源回调
+            Log.d(TAG, "onOpenBookResourceCallback -> $bookUseInfo")
         }
     }
 
@@ -178,8 +230,14 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
             // 更新UI等操作
             if (mReference.get() != null) {
                 when (msg.what) {
-                    WHAT_BOOK_USE_INFO -> {
-                        Log.d(TAG, "获取书本使用信息: ${msg.obj as BookUseInfo}")
+                    UNBIND_SERVICE -> {
+                        mReference.get()?.let {
+                            Log.d(TAG, "解绑服务")
+                            it.unBindRemoteService()
+                        }
+                    }
+                    FLOAT_LAYOUT -> {
+                        mReference.get()?.handleFloatLayout()
                     }
                 }
             }
@@ -193,8 +251,11 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
     override fun onDestroy() {
         super.onDestroy()
         cancelTimer()
+        withRemoteErrorHandling("unRegisterOnAppListener") {
+            mAppManager.unRegisterOnAppListener(mOnAppListener)
+        }
         // 解绑服务
-        if (isServiceConnected) unbindService(mServiceConnection)
+        unBindRemoteService()
         mMyHandler.removeCallbacksAndMessages(null)
     }
 
@@ -430,16 +491,16 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
                 startActivity(intent)
                 cancelTimer()
                 timer = Timer()
-                timerTask = object : TimerTask(){
+                timerTask = object : TimerTask() {
                     override fun run() {
-                        if(!isServiceConnected){
+                        if (!isServiceConnected) {
                             bindRemoteService()
-                        }else{
+                        } else {
                             cancelTimer()
                         }
                     }
                 }
-                timer?.schedule(timerTask,1000,1000)
+                timer?.schedule(timerTask, 1000, 1000)
             } catch (e: Exception) {
                 e.printStackTrace()
                 e.message?.toast(this@MainActivity)
@@ -447,7 +508,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
         }
     }
 
-    fun cancelTimer(){
+    fun cancelTimer() {
         timerTask?.cancel()
         timer?.cancel()
     }
