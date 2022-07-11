@@ -77,11 +77,6 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
             binding.btnConfirm.performClick()
         }
         binding.etDeviceId.setText(getDeviceId())
-
-        EasyFloat.with(this).setLayout(R.layout.aidl_layout).setGravity(Gravity.CENTER_HORIZONTAL)
-            .setShowPattern(ShowPattern.ALL_TIME)
-            .show()
-        mMyHandler.sendMessage(Message.obtain().apply { what = FLOAT_LAYOUT })
     }
 
     /**
@@ -89,6 +84,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
      * @des：处理悬浮窗口事件，用于 AIDL 服务交互
      */
     private fun handleFloatLayout() {
+//        Log.d(TAG,"悬浮窗口：${EasyFloat.getFloatView()}")
         EasyFloat.getFloatView()?.apply {
             findViewById<Button>(R.id.btn_exit_app).setOnClickListener {
                 // 关闭应用
@@ -138,7 +134,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
         const val PACKAGE_NAME = "com.elephant.synstudy.custom"
         const val REMOTE_SERVICE_ACTION = "com.kingsun.synstudy.custom.service.action"
         const val LOCAL_AUDIO_PATH =
-            "/storage/emulated/0/TbxTest/1.0.5/28/28/audio/b82d2e4815280077531bbbc7f86ce084"
+            "/storage/emulated/0/TbxTest/1.0.5/28/28/audio/fc356a49aa1bce6e4dbde5156a47c2bf"
         const val UNBIND_SERVICE = 2
         const val FLOAT_LAYOUT = 3
         const val LOCAL_AUDIO = 4
@@ -161,6 +157,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
         if (isServiceConnected) unbindService(mServiceConnection)
         isServiceConnected = false
         isEnterBookSuccess = false
+        EasyFloat.hide()
     }
 
     private val mServiceConnection = object : ServiceConnection {
@@ -171,7 +168,6 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
             mAppManager = IAppManager.Stub.asInterface(service)
             try {
                 mAppManager.registerOnAppListener(mOnAppListener)
-                service?.linkToDeath(mDeathRecipient, 0)
             } catch (e: RemoteException) {
                 e.printStackTrace()
             }
@@ -184,19 +180,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
             withRemoteErrorHandling("unRegisterOnAppListener") {
                 mAppManager.unRegisterOnAppListener(mOnAppListener)
             }
-            // 重新绑定服务
-            bindRemoteService()
         }
-
-    }
-
-    /**
-     * @Author： fanda
-     * @des： Binder 死亡代理
-     */
-    private val mDeathRecipient = IBinder.DeathRecipient {
-        //该方法在client 端线程池中运行，远程服务进程异常，重新连接服务
-        bindRemoteService()
     }
 
     /**
@@ -448,15 +432,11 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
             val desPath =
                 SDCardUtils.getSDCardRootPath() + "TbxTest" + File.separator + binding.etBookId.text.toString() + ".zip"
             val desFile = File(desPath)
-            if(isDirectlyOpen){
-                if (desFile.exists()) {
-                    openTbxHD(bookResource, desPath)
-                } else {
-                    "资源不存在，请先下载".toast(this)
-                }
+            if (isDirectlyOpen) {
+                openTbxHD(bookResource, desPath)
                 isDirectlyOpen = false
                 return
-            }else {
+            } else {
                 if (desFile.exists()) {
                     openTbxHD(bookResource, desPath)
                     return
@@ -479,7 +459,11 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
                         binding.pbProgress.visibility = View.GONE
                     }
 
-                    override fun onDownLoadFail(state: String, errorMsg: String, speed: String) {
+                    override fun onDownLoadFail(
+                        state: String,
+                        errorMsg: String,
+                        speed: String
+                    ) {
                         errorMsg.toast(this@MainActivity)
                         binding.tvLoadTips.visibility = View.GONE
                         binding.pbProgress.visibility = View.GONE
@@ -553,6 +537,13 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
                 e.printStackTrace()
                 e.message?.toast(this@MainActivity)
             }
+            // 悬浮窗口处理
+            EasyFloat.with(this@MainActivity).setLayout(R.layout.aidl_layout)
+                .setGravity(Gravity.CENTER_HORIZONTAL)
+                .setShowPattern(ShowPattern.ALL_TIME)
+                .show()
+            EasyFloat.show()
+            mMyHandler.sendEmptyMessageDelayed(FLOAT_LAYOUT, 1000L)
         }
     }
 

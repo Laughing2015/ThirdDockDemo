@@ -40,6 +40,7 @@
         android:layout_height="wrap_content"
         android:layout_marginLeft="20dp"
         android:text="测试本地评测音频"
+        android:visibility="gone"
         app:layout_constraintLeft_toRightOf="@id/btn_visible_evaluation"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
