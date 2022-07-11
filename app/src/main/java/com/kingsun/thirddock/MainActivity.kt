@@ -56,7 +56,6 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
     private var timerTask: TimerTask? = null
     private var visibleSettingsButton = false
     private var visibleEvaluationButton = false
-    private var isDirectlyOpen = false
     private var mMediaPlayer = MediaPlayer()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,10 +70,6 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
                 return@setOnClickListener
             }
             checkAndRequestPermission()
-        }
-        binding.btnOpen.setOnClickListener {
-            isDirectlyOpen = true
-            binding.btnConfirm.performClick()
         }
         binding.etDeviceId.setText(getDeviceId())
 
@@ -448,21 +443,11 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
             val desPath =
                 SDCardUtils.getSDCardRootPath() + "TbxTest" + File.separator + binding.etBookId.text.toString() + ".zip"
             val desFile = File(desPath)
-            if(isDirectlyOpen){
-                if (desFile.exists()) {
-                    openTbxHD(bookResource, desPath)
-                } else {
-                    "资源不存在，请先下载".toast(this)
-                }
-                isDirectlyOpen = false
+            if (desFile.exists()) {
+                openTbxHD(bookResource, desPath)
                 return
-            }else {
-                if (desFile.exists()) {
-                    openTbxHD(bookResource, desPath)
-                    return
-                } else {
-                    File(desFile.parent).mkdirs()
-                }
+            } else {
+                File(desFile.parent).mkdirs()
             }
             SingleDownloadHelper.startSingleTask(it,
                 desPath,
