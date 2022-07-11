@@ -8,6 +8,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.*
 import android.provider.Settings
@@ -51,10 +52,11 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
     EasyPermissions.RationaleCallbacks {
     lateinit var binding: ActivityMainBinding
     private lateinit var mOkHttpHelper: OkHttpHelper
-    var timer: Timer? = null
-    var timerTask: TimerTask? = null
+    private var timer: Timer? = null
+    private var timerTask: TimerTask? = null
     private var visibleSettingsButton = false
     private var visibleEvaluationButton = false
+    private var mMediaPlayer = MediaPlayer()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -104,7 +106,24 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
                     visibleEvaluationButton = !visibleEvaluationButton
                 }
             }
+            findViewById<Button>(R.id.btn_local_audio).setOnClickListener {
+                // 播放本地评测资源
+                handleLocalAudio(LOCAL_AUDIO_PATH)
+            }
         }
+    }
+
+    /**
+     * @Author： fanda
+     * @des：播放本地音频文件
+     */
+    private fun handleLocalAudio(localPath: String) {
+        // 处理结果
+        playFromSdCard(mMediaPlayer, localPath, completeCallback = {
+            Log.d(TAG, "播放完成")
+        }, errorCallback = {
+            Log.d(TAG, "播放异常")
+        })
     }
 
     // start -------------- 远程服务相关处理 -------------- //
@@ -113,8 +132,11 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
         const val TAG = "MainActivity"
         const val PACKAGE_NAME = "com.elephant.synstudy.custom"
         const val REMOTE_SERVICE_ACTION = "com.kingsun.synstudy.custom.service.action"
+        const val LOCAL_AUDIO_PATH =
+            "/storage/emulated/0/TbxTest/1.0.5/28/28/audio/b82d2e4815280077531bbbc7f86ce084"
         const val UNBIND_SERVICE = 2
         const val FLOAT_LAYOUT = 3
+        const val LOCAL_AUDIO = 4
     }
 
     private var isServiceConnected = false
@@ -221,6 +243,14 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
             // 打开水滴资源回调
             Log.d(TAG, "onOpenBookResourceCallback -> $bookUseInfo")
         }
+
+        override fun onEvaluateCallback(bookUseInfo: BookUseInfo) {
+            // 评测
+            Log.d(TAG, "onEvaluateCallback -> $bookUseInfo")
+            handleLocalAudio(bookUseInfo.evaluateAudioPath)
+        }
+
+
     }
 
     // 静态自定义 Handler 类
@@ -238,6 +268,9 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
                     }
                     FLOAT_LAYOUT -> {
                         mReference.get()?.handleFloatLayout()
+                    }
+                    LOCAL_AUDIO -> {
+                        mReference.get()?.handleLocalAudio(LOCAL_AUDIO_PATH)
                     }
                 }
             }

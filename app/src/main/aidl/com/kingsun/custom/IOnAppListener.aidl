@@ -19,4 +19,7 @@ interface IOnAppListener {
 
     // 打开书本资源
     void onOpenBookResourceCallback(in BookUseInfo bookUseInfo);
+
+    // 评测
+    void onEvaluateCallback(in BookUseInfo bookUseInfo);
 }

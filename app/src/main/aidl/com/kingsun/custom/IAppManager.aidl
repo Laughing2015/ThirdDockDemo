@@ -22,4 +22,5 @@ interface IAppManager {
 
      // 取消三方客户端监听
      void unRegisterOnAppListener(IOnAppListener listener);
+
 }

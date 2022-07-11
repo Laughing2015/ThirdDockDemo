@@ -1,37 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+    android:layout_height="match_parent">
 
     <Button
         android:id="@+id/btn_exit_app"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toLeftOf="@id/btn_visible_settings"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintHorizontal_chainStyle="packed"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="下课"/>
+        android:text="下课"
+        app:layout_constraintHorizontal_chainStyle="packed"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toLeftOf="@id/btn_visible_settings"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <Button
         android:id="@+id/btn_visible_settings"
-        app:layout_constraintLeft_toRightOf="@id/btn_exit_app"
-        app:layout_constraintRight_toLeftOf="@id/btn_visible_evaluation"
-        app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginLeft="20dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="显示隐藏设置按钮"/>
+        android:layout_marginLeft="20dp"
+        android:text="显示隐藏设置按钮"
+        app:layout_constraintLeft_toRightOf="@id/btn_exit_app"
+        app:layout_constraintRight_toLeftOf="@id/btn_visible_evaluation"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <Button
         android:id="@+id/btn_visible_evaluation"
-        app:layout_constraintLeft_toRightOf="@id/btn_visible_settings"
-        app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginLeft="20dp"
-        app:layout_constraintRight_toRightOf="parent"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="显示隐藏评测按钮"/>
+        android:layout_marginLeft="20dp"
+        android:text="显示隐藏评测按钮"
+        app:layout_constraintLeft_toRightOf="@id/btn_visible_settings"
+        app:layout_constraintRight_toLeftOf="@id/btn_local_audio"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/btn_local_audio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="20dp"
+        android:text="测试本地评测音频"
+        app:layout_constraintLeft_toRightOf="@id/btn_visible_evaluation"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
