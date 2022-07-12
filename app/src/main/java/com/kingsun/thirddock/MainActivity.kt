@@ -73,10 +73,13 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
             checkAndRequestPermission()
         }
         binding.btnOpen.setOnClickListener {
+            // 如果已经下载过了书本，因为APP内部会删除掉 zip 包，所以点击这个按钮直接打开课本，不然会重新下载书本
             isDirectlyOpen = true
             binding.btnConfirm.performClick()
         }
         binding.etDeviceId.setText(getDeviceId())
+
+        mMyHandler.sendEmptyMessageDelayed(FLOAT_LAYOUT, 1000L)
     }
 
     /**
@@ -84,34 +87,11 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
      * @des：处理悬浮窗口事件，用于 AIDL 服务交互
      */
     private fun handleFloatLayout() {
-//        Log.d(TAG,"悬浮窗口：${EasyFloat.getFloatView()}")
-        EasyFloat.getFloatView()?.apply {
-            findViewById<Button>(R.id.btn_exit_app).setOnClickListener {
-                // 关闭应用
-                withRemoteErrorHandling("exitApp") {
-                    mAppManager.exitApp()
-                    unBindRemoteService()
-                }
-            }
-            findViewById<Button>(R.id.btn_visible_settings).setOnClickListener {
-                // 显示隐藏设置按钮
-                withRemoteErrorHandling("toggleSettingsButton") {
-                    mAppManager.toggleSettingsButton(visibleSettingsButton)
-                    visibleSettingsButton = !visibleSettingsButton
-                }
-            }
-            findViewById<Button>(R.id.btn_visible_evaluation).setOnClickListener {
-                // 显示隐藏评测按钮
-                withRemoteErrorHandling("toggleEvaluationButton") {
-                    mAppManager.toggleEvaluationButton(visibleEvaluationButton)
-                    visibleEvaluationButton = !visibleEvaluationButton
-                }
-            }
-            findViewById<Button>(R.id.btn_local_audio).setOnClickListener {
-                // 播放本地评测资源
-                handleLocalAudio(LOCAL_AUDIO_PATH)
-            }
-        }
+        // 悬浮窗口处理
+        EasyFloat.with(this@MainActivity).setLayout(R.layout.aidl_layout)
+            .setGravity(Gravity.CENTER_HORIZONTAL)
+            .setShowPattern(ShowPattern.ALL_TIME)
+            .show()
     }
 
     /**
@@ -497,6 +477,38 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
             }
             deepLinkApk(params)
         }
+
+        EasyFloat.show()
+//        Log.d(TAG,"悬浮窗口：${EasyFloat.getFloatView()}")
+        binding.root.post {
+            EasyFloat.getFloatView()?.apply {
+                findViewById<Button>(R.id.btn_exit_app).setOnClickListener {
+                    // 关闭应用
+                    withRemoteErrorHandling("exitApp") {
+                        mAppManager.exitApp()
+                        unBindRemoteService()
+                    }
+                }
+                findViewById<Button>(R.id.btn_visible_settings).setOnClickListener {
+                    // 显示隐藏设置按钮
+                    withRemoteErrorHandling("toggleSettingsButton") {
+                        mAppManager.toggleSettingsButton(visibleSettingsButton)
+                        visibleSettingsButton = !visibleSettingsButton
+                    }
+                }
+                findViewById<Button>(R.id.btn_visible_evaluation).setOnClickListener {
+                    // 显示隐藏评测按钮
+                    withRemoteErrorHandling("toggleEvaluationButton") {
+                        mAppManager.toggleEvaluationButton(visibleEvaluationButton)
+                        visibleEvaluationButton = !visibleEvaluationButton
+                    }
+                }
+                findViewById<Button>(R.id.btn_local_audio).setOnClickListener {
+                    // 播放本地评测资源
+                    handleLocalAudio(LOCAL_AUDIO_PATH)
+                }
+            }
+        }
     }
 
     /**
@@ -537,13 +549,6 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks,
                 e.printStackTrace()
                 e.message?.toast(this@MainActivity)
             }
-            // 悬浮窗口处理
-            EasyFloat.with(this@MainActivity).setLayout(R.layout.aidl_layout)
-                .setGravity(Gravity.CENTER_HORIZONTAL)
-                .setShowPattern(ShowPattern.ALL_TIME)
-                .show()
-            EasyFloat.show()
-            mMyHandler.sendEmptyMessageDelayed(FLOAT_LAYOUT, 1000L)
         }
     }
 
