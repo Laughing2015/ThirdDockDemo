@@ -12,7 +12,8 @@ object Const {
     //合作方秘钥
     const val SECRET_KEY = "089f79cffa8af74e1966ba2fa34cd370"
 
-    private const val BASE_URL = "http://183.47.42.218:9222/"
+//    private const val BASE_URL = "http://183.47.42.218:9222/"
+    private const val BASE_URL = "https://tbxapi.kingsun.cn/"
     //api地址
     const val API_URL = "${BASE_URL}aop/active"
     /*获取书本资源信息*/
